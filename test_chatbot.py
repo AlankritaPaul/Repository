@@ -1,6 +1,6 @@
-"""Unit tests for chatbot internal structures and command logic."""
+"""Unit tests for chatbot internal structures and client configuration."""
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import os
 import sys
 
@@ -10,21 +10,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 class TestChatbotLogic(unittest.TestCase):
 
-    def test_missing_api_key_exits(self):
-        """Verify check_api_key exits when OPENAI_API_KEY is not set."""
-        with patch.dict(os.environ, {}, clear=True):
-            # Mock print and sys.exit
-            with patch("sys.exit") as mock_exit, patch("builtins.print"):
-                import chatbot
-                chatbot.check_api_key()
-                mock_exit.assert_called_with(1)
+    def test_free_ai_mode_when_no_key(self):
+        """Verify get_client_and_config falls back to free AI mode when no key is set."""
+        with patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
+            import chatbot
+            client, model, display = chatbot.get_client_and_config()
+            self.assertEqual(model, "openai")
+            self.assertIn("Free AI Cloud", display)
 
-    def test_valid_api_key_returns(self):
-        """Verify check_api_key returns key when set."""
+    def test_official_openai_mode_when_key_provided(self):
+        """Verify get_client_and_config configures official OpenAI client when real key is set."""
         with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test12345678"}):
             import chatbot
-            key = chatbot.check_api_key()
-            self.assertEqual(key, "sk-test12345678")
+            client, model, display = chatbot.get_client_and_config()
+            self.assertEqual(model, "gpt-4o-mini")
+            self.assertIn("OpenAI (gpt-4o-mini)", display)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Interactive Terminal Chatbot powered by OpenAI API
-===================================================
+Interactive Terminal Chatbot
+============================
 A lightweight, continuous conversation loop in your terminal that streams
-responses from OpenAI LLMs with conversational memory, command handling,
-and clean error reporting.
+responses from LLMs with conversational memory, command handling, and
+free cloud AI support out of the box (no account or API key required!).
 """
 
 import sys
@@ -59,14 +59,14 @@ except ImportError:
     sys.exit(1)
 
 
-def print_banner(model_name: str) -> None:
+def print_banner(display_name: str) -> None:
     """Displays the welcome banner and quick commands."""
     divider = "=" * 60
     print(f"{COLOR_CYAN}{divider}{COLOR_RESET}")
     print(f"{STYLE_BRIGHT}{COLOR_CYAN}           🤖 Python AI Terminal Chatbot{COLOR_RESET}")
     print(f"{COLOR_CYAN}{divider}{COLOR_RESET}")
-    print(f" Model: {COLOR_GREEN}{model_name}{COLOR_RESET}")
-    print(f" Commands: Type {COLOR_YELLOW}/help{COLOR_RESET} for commands or {COLOR_YELLOW}exit{COLOR_RESET} to quit.")
+    print(f" AI Engine: {COLOR_GREEN}{display_name}{COLOR_RESET}")
+    print(f" Commands:  Type {COLOR_YELLOW}/help{COLOR_RESET} for commands or {COLOR_YELLOW}exit{COLOR_RESET} to quit.")
     print(f"{COLOR_CYAN}{'-' * 60}{COLOR_RESET}\n")
 
 
@@ -75,52 +75,58 @@ def print_help() -> None:
     print(f"\n{COLOR_MAGENTA}{STYLE_BRIGHT}Available Commands:{COLOR_RESET}")
     print(f"  {COLOR_YELLOW}/help{COLOR_RESET}             - Show this help menu")
     print(f"  {COLOR_YELLOW}/clear{COLOR_RESET} or {COLOR_YELLOW}/reset{COLOR_RESET}  - Clear conversation history and start fresh")
-    print(f"  {COLOR_YELLOW}/model <name>{COLOR_RESET}     - Change current OpenAI model (e.g., /model gpt-4o)")
+    print(f"  {COLOR_YELLOW}/model <name>{COLOR_RESET}     - Change current model (e.g., /model gpt-4o)")
     print(f"  {COLOR_YELLOW}/system <prompt>{COLOR_RESET}  - Update system persona / instructions")
     print(f"  {COLOR_YELLOW}/history{COLOR_RESET}          - Show current conversation message count")
     print(f"  {COLOR_YELLOW}exit{COLOR_RESET} or {COLOR_YELLOW}quit{COLOR_RESET}      - Exit the chatbot\n")
 
 
-def check_api_key() -> str:
-    """Retrieves and validates the OpenAI API key from the environment."""
+def get_client_and_config():
+    """Initializes the OpenAI client and determines the appropriate AI model and backend."""
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        print(f"\n{COLOR_RED}{STYLE_BRIGHT}============================================================{COLOR_RESET}")
-        print(f"{COLOR_RED}{STYLE_BRIGHT} [Missing API Key] OpenAI API Key Not Found!{COLOR_RESET}")
-        print(f"{COLOR_RED}{STYLE_BRIGHT}============================================================{COLOR_RESET}")
-        print("\nPlease set your OpenAI API key using one of the following methods:\n")
-        print(f" 1. {STYLE_BRIGHT}Using a .env file (Recommended):{COLOR_RESET}")
-        print(f"    - Copy {COLOR_CYAN}.env.example{COLOR_RESET} to {COLOR_CYAN}.env{COLOR_RESET}")
-        print(f"    - Add your key: {COLOR_YELLOW}OPENAI_API_KEY=sk-...{COLOR_RESET}\n")
-        print(f" 2. {STYLE_BRIGHT}Using Terminal Environment Variable:{COLOR_RESET}")
-        print(f"    - Windows (PowerShell): {COLOR_CYAN}$env:OPENAI_API_KEY=\"your_api_key\"{COLOR_RESET}")
-        print(f"    - Windows (CMD):        {COLOR_CYAN}set OPENAI_API_KEY=your_api_key{COLOR_RESET}")
-        print(f"    - Linux / macOS:        {COLOR_CYAN}export OPENAI_API_KEY=\"your_api_key\"{COLOR_RESET}\n")
-        print("To generate a new key, visit: https://platform.openai.com/api-keys\n")
-        sys.exit(1)
-    return api_key
+    base_url = os.environ.get("OPENAI_BASE_URL", "").strip()
+
+    is_placeholder = (
+        not api_key or
+        api_key in ("your_openai_api_key_here", "none", "free", "demo", "null")
+    )
+
+    if is_placeholder and not base_url:
+        # Free AI Mode: Works without any OpenAI account or API key!
+        client = OpenAI(
+            base_url="https://text.pollinations.ai/openai",
+            api_key="none"
+        )
+        raw_model = os.environ.get("OPENAI_MODEL", "openai").strip()
+        model_name = "openai" if raw_model in ("gpt-4o-mini", "openai") else raw_model
+        display_name = f"Free AI Cloud ({model_name}) [No Account Required]"
+    else:
+        # Official OpenAI API Mode
+        client = OpenAI(
+            api_key=api_key,
+            base_url=base_url if base_url else None
+        )
+        model_name = os.environ.get("OPENAI_MODEL", "gpt-4o-mini").strip()
+        display_name = f"OpenAI ({model_name})"
+
+    return client, model_name, display_name
 
 
 def main() -> None:
     """Main execution loop for the chatbot."""
-    api_key = check_api_key()
+    client, model_name, display_name = get_client_and_config()
 
-    # Load configuration
-    model_name = os.environ.get("OPENAI_MODEL", "gpt-4o-mini").strip()
     default_system_prompt = os.environ.get(
         "SYSTEM_PROMPT",
         "You are a helpful, friendly, and intelligent AI assistant."
     ).strip()
-
-    # Initialize client
-    client = OpenAI(api_key=api_key)
 
     # Maintain conversation history
     conversation_history = [
         {"role": "system", "content": default_system_prompt}
     ]
 
-    print_banner(model_name)
+    print_banner(display_name)
 
     while True:
         try:
@@ -184,6 +190,7 @@ def main() -> None:
             print(f"{COLOR_CYAN}{STYLE_BRIGHT}AI > {COLOR_RESET}", end="", flush=True)
 
             try:
+                # Try streaming first for responsive UX
                 response_stream = client.chat.completions.create(
                     model=model_name,
                     messages=conversation_history,
@@ -192,40 +199,53 @@ def main() -> None:
 
                 full_response = ""
                 for chunk in response_stream:
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        delta = chunk.choices[0].delta.content
-                        full_response += delta
-                        print(delta, end="", flush=True)
+                    if chunk.choices and len(chunk.choices) > 0:
+                        choice = chunk.choices[0]
+                        if hasattr(choice, "delta") and choice.delta and choice.delta.content:
+                            delta = choice.delta.content
+                            full_response += delta
+                            print(delta, end="", flush=True)
 
-                print("\n")  # New line after response ends
+                if not full_response:
+                    # Fallback to non-streaming if stream yielded no chunks
+                    response = client.chat.completions.create(
+                        model=model_name,
+                        messages=conversation_history,
+                        stream=False
+                    )
+                    full_response = response.choices[0].message.content or ""
+                    print(full_response, end="", flush=True)
+
+                print("\n")
                 conversation_history.append({"role": "assistant", "content": full_response})
 
             except AuthenticationError:
                 print(f"\n\n{COLOR_RED}[Authentication Error]{COLOR_RESET} Your API key appears to be invalid.")
                 print("Please check your OPENAI_API_KEY setting in .env or terminal.\n")
-                # Remove last user message since it was not answered
                 conversation_history.pop()
 
             except RateLimitError:
-                print(f"\n\n{COLOR_RED}[Rate Limit / Quota Error]{COLOR_RESET} You exceeded your current OpenAI quota or rate limit.")
-                print("Please check your OpenAI plan and billing status.\n")
+                print(f"\n\n{COLOR_RED}[Rate Limit / Quota Error]{COLOR_RESET} Rate limit or quota exceeded.")
+                print("Please check your API plan or wait a moment.\n")
                 conversation_history.pop()
 
             except APIConnectionError:
-                print(f"\n\n{COLOR_RED}[Connection Error]{COLOR_RESET} Could not connect to OpenAI servers.")
-                print("Please verify your internet connection.\n")
+                print(f"\n\n{COLOR_RED}[Connection Error]{COLOR_RESET} Could not connect to AI servers.")
+                print("Please check your internet connection.\n")
                 conversation_history.pop()
 
             except OpenAIError as oe:
-                print(f"\n\n{COLOR_RED}[OpenAI API Error]{COLOR_RESET} {oe}\n")
+                print(f"\n\n{COLOR_RED}[AI API Error]{COLOR_RESET} {oe}\n")
+                conversation_history.pop()
+
+            except Exception as ex:
+                print(f"\n\n{COLOR_RED}[Error]{COLOR_RESET} {ex}\n")
                 conversation_history.pop()
 
         except KeyboardInterrupt:
-            # Handle Ctrl+C gracefully
             print(f"\n\n{COLOR_CYAN}Session interrupted. Type 'exit' to quit or continue chatting.{COLOR_RESET}\n")
             continue
         except EOFError:
-            # Handle Ctrl+D or end of input
             print(f"\n{COLOR_CYAN}👋 Goodbye!{COLOR_RESET}\n")
             break
 

@@ -6,9 +6,10 @@ A fast, interactive, and responsive terminal chatbot powered by OpenAI's Large L
 
 ## ✨ Features
 
+- **No Account Required Out-of-the-Box**: Includes Free AI Cloud mode enabled by default. You can start chatting immediately without creating an OpenAI account or entering a credit card!
 - **Continuous Conversation Loop**: Natural, multi-turn chat experience in your terminal that remembers prior context.
 - **Real-Time Token Streaming**: Watch the AI generate responses live in real time.
-- **Environment Variable Driven**: Secure configuration using `.env` or system environment variables.
+- **Environment Variable Driven**: Seamlessly switch between Free AI Mode and official OpenAI (`gpt-4o-mini`, `gpt-4o`) via `.env` or system environment variables.
 - **Cross-Platform Styled UI**: Clean, color-coded terminal messages with support for Windows, macOS, and Linux.
 - **Interactive In-Chat Commands**:
   - `/help` - View available commands.
@@ -17,14 +18,14 @@ A fast, interactive, and responsive terminal chatbot powered by OpenAI's Large L
   - `/system <prompt>` - Dynamically update the AI persona / instructions.
   - `/history` - View message and turn count.
   - `exit` or `quit` - Cleanly exit the session.
-- **Robust Error Handling**: Friendly, actionable error messages for missing keys, quota limits, and network issues.
+- **Robust Error Handling**: Friendly, actionable error messages for network issues and quota limits.
 
 ---
 
 ## 📋 Prerequisites
 
 - **Python 3.8+** installed on your system.
-- An **OpenAI API Key** ([Get one here](https://platform.openai.com/api-keys)).
+- *(Optional)* An **OpenAI API Key** if you wish to use official OpenAI models instead of the free tier.
 
 ---
 
