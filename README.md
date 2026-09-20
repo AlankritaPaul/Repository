@@ -24,7 +24,7 @@ A fast, interactive, and responsive terminal chatbot powered by OpenAI's Large L
 
 ## 📋 Prerequisites
 
-- **Python 3.8+** installed on your system.
+- **Python (advanced version)** installed on your system.
 - *(Optional)* An **OpenAI API Key** if you wish to use official OpenAI models instead of the free tier.
 
 ---
